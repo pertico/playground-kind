@@ -10,8 +10,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
   -subj "/CN=*.docker.localhost"
 
-kubectl create secret tls local-selfsigned-tls `
-  --cert=traefik/tls/tls.crt --key=traefik/tls/tls.key `
+kubectl create secret tls local-selfsigned-tls \
+  --cert=traefik/tls/tls.crt --key=traefik/tls/tls.key \
   --namespace traefik
 
 helm install traefik traefik/traefik `
