@@ -1,28 +1,47 @@
+deployment:
+  hostAliases:
+    - ip: "172.21.0.1"
+      hostnames:
+        - "step-ca"
+env:
+  - name: LEGO_CA_CERTIFICATES
+    value: "/etc/step-ca/root_ca.crt"    
 
+volumes:
+  - name: step-ca-root
+    type: configMap
+    mountPath: "/etc/step-ca"
+
+additionalArguments:
+  - "--certificatesresolvers.stepacme.acme.caserver=https://step-ca:9000/acme/acme/directory"
+  - "--certificatesresolvers.stepacme.acme.email=admin@k8s.localhost"
+  - "--certificatesresolvers.stepacme.acme.storage=/data/acme.json"
+  - "--certificatesresolvers.stepacme.acme.tlschallenge=true" # <-- Flag exacto CLI
+  
 # Configure Network Ports and EntryPoints
 # EntryPoints are the network listeners for incoming traffic.
 ports:
   # Defines the HTTP entry point named 'web'
   web:
-    port: 80
+    port: 9080
     nodePort: 30080
     # Instructs this entry point to redirect all traffic to the 'websecure' entry point
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
+#    http:
+#      redirections:
+#        entryPoint:
+#          to: websecure
+#          scheme: https
+#          permanent: true
 
   # Defines the HTTPS entry point named 'websecure'
   websecure:
-    port: 443
+    port: 9443
     nodePort: 30443
 
 # Enables the dashboard in Secure Mode
 api:
   dashboard: true
-  insecure: false
+  insecure: true
 
 ingressRoute:
   dashboard:
@@ -30,26 +49,9 @@ ingressRoute:
     matchRule: Host(`traefik.k8s.localhost`)
     entryPoints:
       - websecure
-    middlewares:
-      - name: dashboard-auth
 
 # Creates a BasicAuth Middleware and Secret for the Dashboard Security
 extraObjects:
-  - apiVersion: v1
-    kind: Secret
-    metadata:
-      name: dashboard-auth-secret
-    type: kubernetes.io/basic-auth
-    stringData:
-      username: admin
-      password: "P@ssw0rd"      # Replace with an Actual Password
-  - apiVersion: traefik.io/v1alpha1
-    kind: Middleware
-    metadata:
-      name: dashboard-auth
-    spec:
-      basicAuth:
-        secret: dashboard-auth-secret
   - apiVersion: traefik.io/v1alpha1
     kind: TLSStore
     metadata:
@@ -57,7 +59,7 @@ extraObjects:
       namespace: traefik
     spec:
       defaultCertificate:
-        secretName: local-selfsigned-tls
+        secretName: traefik-k8s-localhost-tls
 
 # We will route with Gateway API instead.
 ingressClass:
